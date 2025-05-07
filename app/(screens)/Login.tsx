@@ -1,32 +1,87 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, useColorScheme } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, Image, useColorScheme, Alert
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';  // Import AsyncStorage
+import { saveSecureData, getSecureData } from '../../storage/secureStore';  // Assuming getSecureData is available
+import { loginUser } from '../../storage/secureStore';
 
 export default function Login() {
   const router = useRouter();
   const colorScheme = useColorScheme();
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // For toggling password visibility
+
+  const handleLogin = async () => {
+    if (!username || !password) {
+      Alert.alert('Validation Error', 'Please enter both username and password.');
+      return;
+    }
+  
+    // Use actual authentication check
+    const isAuthenticated = await loginUser(username, password);
+  
+    if (isAuthenticated) {
+      // Store session data if login is valid
+      await AsyncStorage.setItem('username', username);
+  
+      const storedFullName = await getSecureData(`${username}_fullName`);
+      const storedEmail = await getSecureData(`${username}_email`);
+      const storedPhoneNumber = await getSecureData(`${username}_phoneNumber`);
+  
+      router.push('/Home');
+    } else {
+      Alert.alert('Authentication Failed', 'Invalid username or password.');
+    }
+  };
+
   return (
     <View style={styles.container}>
-        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} translucent backgroundColor="transparent" />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} translucent backgroundColor="transparent" />
       <View style={styles.topSection}>
         <Image source={require('../../assets/images/babel-x-logo.jpg')} style={styles.logo} />
       </View>
       <View style={styles.bottomSection}>
         <Text style={styles.title}>Login</Text>
+
         <View style={styles.inputContainer}>
           <Ionicons name="person-outline" size={20} color="#333" style={styles.icon} />
-          <TextInput placeholder="Username" placeholderTextColor="#000" style={styles.input} />
+          <TextInput
+            placeholder="Username"
+            placeholderTextColor="#000"
+            style={styles.input}
+            value={username}
+            onChangeText={setUsername}
+          />
         </View>
+
         <View style={styles.inputContainer}>
           <Ionicons name="lock-closed-outline" size={20} color="#333" style={styles.icon} />
-          <TextInput placeholder="Password" placeholderTextColor="#000" secureTextEntry style={styles.input} />
+          <TextInput
+            placeholder="Password"
+            placeholderTextColor="#000"
+            secureTextEntry={!showPassword} // Toggle visibility based on state
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword(!showPassword)} // Toggle show password
+          >
+            <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={20} color="#666" />
+          </TouchableOpacity>
         </View>
-        <Text style={styles.forgotPassword}>Forget Password?</Text>
 
-        <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/Home')}>
+        <Text style={styles.forgotPassword}>Forgot Password?</Text>
+
+        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.loginButtonText}>Login</Text>
         </TouchableOpacity>
 
@@ -60,6 +115,11 @@ const styles = StyleSheet.create({
   },
   icon: { marginRight: 10 },
   input: { flex: 1, paddingVertical: 8 },
+  eyeIcon: {
+    position: 'absolute',
+    right: 10,
+    top: 5,
+  },
   forgotPassword: { textAlign: 'right', color: '#888', marginBottom: 20 },
   loginButton: {
     backgroundColor: '#4f75c2',
